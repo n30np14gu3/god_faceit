@@ -2,5 +2,87 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="god_drv.c" />
+    <ClCompile Include="UnsupportedDispatch.c">
+      <Filter>IOCTL</Filter>
+    </ClCompile>
+    <ClCompile Include="DriverUnload.c">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="IoControl.c">
+      <Filter>IOCTL</Filter>
+    </ClCompile>
+    <ClCompile Include="IoCloseCall.c">
+      <Filter>IOCTL</Filter>
+    </ClCompile>
+    <ClCompile Include="IoCreateCall.c">
+      <Filter>IOCTL</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreadPreCallback.c">
+      <Filter>Callback\ObjectCallback</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessPreCallback.c">
+      <Filter>Callback\ObjectCallback</Filter>
+    </ClCompile>
+    <ClCompile Include="callback.c">
+      <Filter>Callback\ObjectCallback</Filter>
+    </ClCompile>
+    <ClCompile Include="CreateProcessCallback.c">
+      <Filter>Callback\CreateProcessCallback</Filter>
+    </ClCompile>
+    <ClCompile Include="ImageLoadCallback.c">
+      <Filter>Callback\ImageLoadCallback</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Core">
+      <UniqueIdentifier>{6c7e0751-0bd7-443b-a530-38202c0065ec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core\SDK">
+      <UniqueIdentifier>{f7b28902-f722-46f8-81f1-548f3dd0f281}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core\SDK\globals">
+      <UniqueIdentifier>{fe476294-55c1-46c3-baf9-0453b83ce174}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="IOCTL">
+      <UniqueIdentifier>{68b9c1aa-6323-4899-977a-f4ca38eb6271}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Callback">
+      <UniqueIdentifier>{5965fad4-292a-433a-ab90-5b7a34d186b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Callback\ObjectCallback">
+      <UniqueIdentifier>{e653b92d-8a2e-4576-82e4-ead897801e12}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Callback\ImageLoadCallback">
+      <UniqueIdentifier>{3f528244-05c8-4a66-9ca6-564c83ccb3a0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Callback\CreateProcessCallback">
+      <UniqueIdentifier>{71e1dfca-4af5-44cd-83df-191c08dbb842}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="VMProtectDDK.h">
+      <Filter>Core\SDK</Filter>
+    </ClInclude>
+    <ClInclude Include="driver_io.h">
+      <Filter>Core\SDK\globals</Filter>
+    </ClInclude>
+    <ClInclude Include="global_defs.h">
+      <Filter>Core\SDK\globals</Filter>
+    </ClInclude>
+    <ClInclude Include="globals.h">
+      <Filter>Core\SDK\globals</Filter>
+    </ClInclude>
+    <ClInclude Include="functions.h">
+      <Filter>Core\SDK\globals</Filter>
+    </ClInclude>
+    <ClInclude Include="callback.h">
+      <Filter>Callback\ObjectCallback</Filter>
+    </ClInclude>
+    <ClInclude Include="CreateProcessCallback.h">
+      <Filter>Callback\CreateProcessCallback</Filter>
+    </ClInclude>
+    <ClInclude Include="ImageLoadCallback.h">
+      <Filter>Callback\ImageLoadCallback</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

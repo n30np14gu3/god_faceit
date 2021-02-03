@@ -132,6 +132,7 @@
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
     <EnableInf2cat>false</EnableInf2cat>
     <OutDir>$(SolutionDir)$(Platform)\$(ConfigurationName)\drv\</OutDir>
+    <LibraryPath>$(SolutionDir)vmp_sdk;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -151,6 +152,7 @@
     </ClCompile>
     <Link>
       <EntryPointSymbol>DriverEP</EntryPointSymbol>
+      <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -163,13 +165,36 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EntryPointSymbol>DriverEP</EntryPointSymbol>
       <ProgramDatabaseFile />
+      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+      <AdditionalDependencies>VMProtectDDK64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="callback.c" />
+    <ClCompile Include="CreateProcessCallback.c" />
+    <ClCompile Include="ImageLoadCallback.c" />
+    <ClCompile Include="IoCloseCall.c" />
+    <ClCompile Include="IoCreateCall.c" />
+    <ClCompile Include="DriverUnload.c" />
     <ClCompile Include="god_drv.c" />
+    <ClCompile Include="IoControl.c" />
+    <ClCompile Include="ProcessPreCallback.c" />
+    <ClCompile Include="ThreadPreCallback.c" />
+    <ClCompile Include="UnsupportedDispatch.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="callback.h" />
+    <ClInclude Include="CreateProcessCallback.h" />
+    <ClInclude Include="driver_io.h" />
+    <ClInclude Include="functions.h" />
+    <ClInclude Include="globals.h" />
+    <ClInclude Include="global_defs.h" />
+    <ClInclude Include="ImageLoadCallback.h" />
+    <ClInclude Include="VMProtectDDK.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
