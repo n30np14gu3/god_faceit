@@ -10,6 +10,7 @@
 #include "draw_utils.h"
 #include "../SDK/VMProtectSDK.h"
 
+#define CIRCLE_RESOLUTION 32
 
 namespace draw_utils
 {
@@ -45,7 +46,7 @@ void draw_utils::init_utils(HWND hWindow, RECT winRect)
 	m_d3Params.SwapEffect = D3DSWAPEFFECT_DISCARD;
 	m_d3Params.BackBufferFormat = D3DFMT_A8R8G8B8;
 	m_d3Params.EnableAutoDepthStencil = TRUE;
-	m_d3Params.AutoDepthStencilFormat = D3DFMT_D16;
+	m_d3Params.AutoDepthStencilFormat = D3DFMT_D24S8;
 	m_d3Params.PresentationInterval = 1;
 
 
@@ -79,6 +80,8 @@ void draw_utils::init_utils(HWND hWindow, RECT winRect)
 		DEFAULT_PITCH | FF_DONTCARE,
 		ENCRYPT_STR_A("Arial"),
 		&m_dxFont);
+
+	m_dxDevice->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
 	VM_END;
 }
 
@@ -211,4 +214,30 @@ void draw_utils::render(void* ptr)
 	HRESULT result = m_dxDevice->Present(0, 0, 0, 0);
 	if (result == D3DERR_DEVICELOST && m_dxDevice->TestCooperativeLevel() == D3DERR_DEVICENOTRESET)
 		m_dxDevice->Reset(&m_d3Params);
+}
+
+void draw_utils::fillBox(FLOAT x, FLOAT y, FLOAT width, FLOAT height, color_t color)
+{
+	Vertex_t pVertex[4];
+	pVertex[0] = Vertex_t(x, y, color);
+	pVertex[1] = Vertex_t(x + width, y, color);
+	pVertex[2] = Vertex_t(x, y + height, color);
+	pVertex[3] = Vertex_t(x + width, y + height, color);
+
+	m_dxDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, pVertex, sizeof(Vertex_t));
+}
+
+void draw_utils::fillCircle(FLOAT x, FLOAT y, FLOAT r, D3DCOLOR color)
+{
+	Vertex_t verticles[CIRCLE_RESOLUTION + 1];
+
+	for (int i = 0; i < CIRCLE_RESOLUTION; i++)
+	{
+		static const float angle = D3DX_PI / 180.f, flSin = sin(angle), flCos = cos(angle);
+
+		verticles[i].x = static_cast<float>(x + flCos * (verticles[i].x - x) - flSin * (verticles[i].y - y));
+		verticles[i].y = static_cast<float>(y + flSin * (verticles[i].x - x) + flCos * (verticles[i].y - y));
+	}
+
+	m_dxDevice->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, CIRCLE_RESOLUTION, verticles, sizeof(Vertex_t));
 }

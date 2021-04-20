@@ -20,8 +20,10 @@ PEPROCESS PEPROTECTED_PROCESS;
 HANDLE GAME_PROCESS;
 PEPROCESS PEGAME_PROCESS;
 
-//Client.dll
+//CSGO Modules
 DWORD32 CLIENT_DLL_BASE;
+DWORD32 ENGINE_DLL_BASE;;
+
 
 BOOLEAN DRIVER_INITED;
 
@@ -86,9 +88,12 @@ NTSTATUS DriverEP(
 	DPRINT("[GOD FACEIT] Setup callbacks...");
 	PsSetLoadImageNotifyRoutine(ImageLoadCallback);
 	PsSetCreateProcessNotifyRoutine(CreateProcessCallback, FALSE);
+
 	
 	VM_END;
+#ifndef DBG
 	EnableCallback();
+#endif
 	DPRINT("[GOD FACEIT] Driver Loaded!");
 	return STATUS_SUCCESS;
 }

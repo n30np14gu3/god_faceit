@@ -14,16 +14,32 @@
 
 FILE* CON_OUT;
 
+//Offsets
 DWORD32 dwLocalPlayer;
 DWORD32 dwEntityList;
-DWORD32 mViewMatrix;
+DWORD32 dwViewMatrix;
+DWORD32 dwClientState;
 
-DWORD32 m_vecOrigin;
+
+//Netvars
 DWORD32 m_iHealth;
 DWORD32 m_bDormant;
 DWORD32 m_iTeamNum;
-DWORD32 m_BoneMatrix;
-DWORD32 m_aimPunchAngle;
+DWORD32 m_vecOrigin;
+DWORD32 m_vecViewAngles;
+
+
+//Settings
+DWORD32 win_pos_x;
+DWORD32 win_pos_y;
+
+DWORD32 win_height;
+DWORD32 win_width;
+
+DWORD32 radar_zoom;
+DWORD32 radar_point_size;
+
+DWORD32 display_index;
 
 void CloseConsole()
 {
@@ -45,24 +61,42 @@ bool FileExists(const char* file)
 
 bool load_offsets()
 {
-	const char* file_name = ENCRYPT_STR_A(".\\config.ini");
-	const char* section_name = ENCRYPT_STR_A("settings");
+	const char* file_name = ENCRYPT_STR_A(".\\bfg.ini");
+	const char* offsets_section_name = ENCRYPT_STR_A("ofs");
+	const char* netvars_section_name = ENCRYPT_STR_A("ntv");
+	const char* config_section_name = ENCRYPT_STR_A("cfg");
 
 	if (!FileExists(file_name))
 		return false;
 
 
-	dwLocalPlayer = LI_FN(GetPrivateProfileIntA)(section_name, "dwLocalPlayer", 0, file_name);
-	dwEntityList = LI_FN(GetPrivateProfileIntA)(section_name, "dwEntityList", 0, file_name);
-	mViewMatrix = LI_FN(GetPrivateProfileIntA)(section_name, "mViewMatrix", 0, file_name);
+	//Load offsets
+	dwLocalPlayer = LI_FN(GetPrivateProfileIntA)(offsets_section_name, "dwLocalPlayer", 0, file_name);
+	dwEntityList = LI_FN(GetPrivateProfileIntA)(offsets_section_name, "dwEntityList", 0, file_name);
+	dwViewMatrix = LI_FN(GetPrivateProfileIntA)(offsets_section_name, "dwViewMatrix", 0, file_name);
+	dwClientState = LI_FN(GetPrivateProfileIntA)(offsets_section_name, "dwClientState", 0, file_name);
+	
 
-	m_vecOrigin = LI_FN(GetPrivateProfileIntA)(section_name, "m_vecOrigin", 0, file_name);
-	m_iHealth = LI_FN(GetPrivateProfileIntA)(section_name, "m_iHealth", 0, file_name);
-	m_bDormant = LI_FN(GetPrivateProfileIntA)(section_name, "m_bDormant", 0, file_name);
-	m_iTeamNum = LI_FN(GetPrivateProfileIntA)(section_name, "m_iTeamNum", 0, file_name);
-	m_BoneMatrix = LI_FN(GetPrivateProfileIntA)(section_name, "m_BoneMatrix", 0, file_name);
-	m_aimPunchAngle = LI_FN(GetPrivateProfileIntA)(section_name, "m_aimPunchAngle", 0, file_name);
+	//Load netvars
+	m_iHealth = LI_FN(GetPrivateProfileIntA)(netvars_section_name, "m_iHealth", 0, file_name);
+	m_bDormant = LI_FN(GetPrivateProfileIntA)(netvars_section_name, "m_bDormant", 0, file_name);
+	m_iTeamNum = LI_FN(GetPrivateProfileIntA)(netvars_section_name, "m_iTeamNum", 0, file_name);
+	m_vecOrigin = LI_FN(GetPrivateProfileIntA)(netvars_section_name, "m_vecOrigin", 0, file_name);
+	m_vecViewAngles = LI_FN(GetPrivateProfileIntA)(netvars_section_name, "m_vecViewAngles", 0, file_name);
 
+
+	//load settings
+	win_pos_x = LI_FN(GetPrivateProfileIntA)(config_section_name, "win_pos_x", 0, file_name);
+	win_pos_y = LI_FN(GetPrivateProfileIntA)(config_section_name, "win_pos_y", 0, file_name);
+	
+	win_height = LI_FN(GetPrivateProfileIntA)(config_section_name, "win_height", 0, file_name);
+	win_width = LI_FN(GetPrivateProfileIntA)(config_section_name, "win_width", 0, file_name);
+	
+	display_index = LI_FN(GetPrivateProfileIntA)(config_section_name, "display_index", 0, file_name);
+	
+	radar_zoom = LI_FN(GetPrivateProfileIntA)(config_section_name, "radar_zoom", 0, file_name);
+	radar_point_size = LI_FN(GetPrivateProfileIntA)(config_section_name, "radar_point_size", 0, file_name);
+	
 	return true;
 }
 
@@ -75,6 +109,7 @@ INT WINAPI WinMain(
 	int       nShowCmd
 )
 {
+	
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 	UNREFERENCED_PARAMETER(nShowCmd);
@@ -87,18 +122,19 @@ INT WINAPI WinMain(
 	for (size_t i = 0; i <= 16; i++)
 		WINDOW_TITLE += static_cast<char>(rand() % ('Z' - 'A') + 'A');
 
+
 	LI_FN(SetConsoleTitleA)(WINDOW_TITLE.c_str());
 	freopen_s(&CON_OUT, ENCRYPT_STR_A("CONOUT$"), "w", stdout);
-	printf_s(ENCRYPT_STR_A("[GOD FACEIT] Created by @shockbyte\n"));
-	printf_s(ENCRYPT_STR_A("[GOD FACEIT] Loading settings...\n"));
+	printf_s(ENCRYPT_STR_A("[0074f0afb7c8e1fec29c10af1f0018a28e34207387640b9d5017d8e8d040d67a] Created by @shockbyte\n"));
+	printf_s(ENCRYPT_STR_A("[0074f0afb7c8e1fec29c10af1f0018a28e34207387640b9d5017d8e8d040d67a] Loading settings...\n"));
 	if (!load_offsets())
 	{
-		printf_s(ENCRYPT_STR_A("[GOD FACEIT] Can't load settings. Check [settings.ini] file\n"));
-		printf_s(ENCRYPT_STR_A("[GOD FACEIT] Closing...\n"));
+		printf_s(ENCRYPT_STR_A("[0074f0afb7c8e1fec29c10af1f0018a28e34207387640b9d5017d8e8d040d67a] Can't load settings. Check [settings.ini] file\n"));
+		printf_s(ENCRYPT_STR_A("[0074f0afb7c8e1fec29c10af1f0018a28e34207387640b9d5017d8e8d040d67a] Closing...\n"));
 		CloseConsole();
 		return 0;
 	}
-	printf_s(ENCRYPT_STR_A("[GOD FACEIT] Loading driver...\n"));
+	printf_s(ENCRYPT_STR_A("[0074f0afb7c8e1fec29c10af1f0018a28e34207387640b9d5017d8e8d040d67a] Loading driver...\n"));
 	VM_END;
 #pragma endregion 
 
@@ -107,15 +143,15 @@ INT WINAPI WinMain(
 	VM_START("WinMain_2");
 	if (!ring0.NoErrors)
 	{
-		printf_s(ENCRYPT_STR_A("[GOD FACEIT] Can't load driver [0x%X]\n"), ring0.GetErrorCode());
-		printf_s(ENCRYPT_STR_A("[GOD FACEIT] Closing...\n"));
+		printf_s(ENCRYPT_STR_A("[0074f0afb7c8e1fec29c10af1f0018a28e34207387640b9d5017d8e8d040d67a] Can't load driver [0x%X]\n"), ring0.GetErrorCode());
+		printf_s(ENCRYPT_STR_A("[0074f0afb7c8e1fec29c10af1f0018a28e34207387640b9d5017d8e8d040d67a] Closing...\n"));
 		CloseConsole();
 		return 0;
 	}
-	printf_s(ENCRYPT_STR_A("[GOD FACEIT] Driver loaded! Getting game info...\n"));
+	printf_s(ENCRYPT_STR_A("[0074f0afb7c8e1fec29c10af1f0018a28e34207387640b9d5017d8e8d040d67a] Driver loaded! Getting game info...\n"));
 	while (!ring0.Attach()) {}
 	while (!ring0.GetModules()) {}
-	printf_s(ENCRYPT_STR_A("[GOD FACEIT] Setup is complete! Start rendering...\n"));
+	printf_s(ENCRYPT_STR_A("[0074f0afb7c8e1fec29c10af1f0018a28e34207387640b9d5017d8e8d040d67a] Setup is complete!\n"));
 	CloseConsole();
 	VM_END;
 #pragma endregion

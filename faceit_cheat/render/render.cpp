@@ -17,14 +17,18 @@
 #include <iostream>
 #include <random>
 
-#include "../SDK/lazy_importer.hpp"
+#include "../imgui/imgui.h"
+#include "../imgui/imgui_impl_dx9.h"
+#include "../imgui/imgui_impl_win32.h"
 
+#include "../SDK/lazy_importer.hpp"
 
 #include "../SDK/VMProtectSDK.h"
 #include "../ring0/KernelInterface.h"
-#include "render.h"
 #include "../draw_utils/draw_utils.h"
 #include "../SDK/globals.h"
+#include "../SDK/CSGO/Entity.h"
+#include "render.h"
 
 using namespace std;
 
@@ -35,6 +39,7 @@ INT SCREEN_HEIGHT = 600;
 
 const MARGINS margin = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
 RECT DESKTOP_RECT;
+DWORD monitor_index;
 
 
 DWORD32 pLocal;
@@ -46,34 +51,7 @@ DWORD32 pEntity;
 DWORD32 entHp;
 DWORD32 entTeam;
 BOOL entDormant;
-
-D3DXVECTOR3 entPos(0, 0, 0);
-D3DXVECTOR2 entScreen(0, 0);
-
-D3DXVECTOR3 entHead(0, 0, 0);
-D3DXVECTOR2 entHeadScreen(0, 0);
-
-D3DXVECTOR3 vecPunch(0, 0, 0);
-float viewMatrix[4][4];
-
-
-D3DXVECTOR3 getBonePos(DWORD32 pTargetIn, int bone, KernelInterface* reader)
-{
-	DWORD32 pMatrix = 0;
-	reader->Read32(pTargetIn + m_BoneMatrix, &pMatrix);
-	if (!pMatrix)
-		return D3DXVECTOR3(0, 0, 0);
-
-	FLOAT px;
-	FLOAT py;
-	FLOAT pz;
-	reader->Read32(pMatrix + 0x30 * bone + 0xC, &px);
-	reader->Read32(pMatrix + 0x30 * bone + 0x1C, &py);
-	reader->Read32(pMatrix + 0x30 * bone + 0x2C, &pz);
-
-	return D3DXVECTOR3(px, py, pz);
-
-}
+BOOL entSpotted;
 
 LRESULT CALLBACK WinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -95,63 +73,178 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+bool window_opened;
+
+const ImGuiWindowFlags flags = 
+ImGuiWindowFlags_NoTitleBar | 
+ImGuiWindowFlags_NoSavedSettings |
+ImGuiWindowFlags_NoCollapse |
+ImGuiWindowFlags_NoResize |
+ImGuiWindowFlags_NoMove;
+
+enum EntityShape_t
+{
+	SHAPE_CIRCLE,
+	SHAPE_TRIANGLE,
+	SHAPE_TRIANGLE_UPSIDEDOWN
+};
+
+DWORD32 CLIENT_STATE;
+
+
+Vector2D WorldToRadar(const Vector location, const Vector origin, const QAngle angles, int width, float scale = 16.f)
+{
+	float x_diff = location.x - origin.x;
+	float y_diff = location.y - origin.y;
+
+	int iRadarRadius = width;
+
+	float flOffset = atanf(y_diff / x_diff);
+	flOffset *= 180;
+	flOffset /= M_PI;
+
+	if ((x_diff < 0) && (y_diff >= 0))
+		flOffset = 180 + flOffset;
+	else if ((x_diff < 0) && (y_diff < 0))
+		flOffset = 180 + flOffset;
+	else if ((x_diff >= 0) && (y_diff < 0))
+		flOffset = 360 + flOffset;
+
+	y_diff = -1 * (sqrtf((x_diff * x_diff) + (y_diff * y_diff)));
+	x_diff = 0;
+
+	flOffset = angles.y - flOffset;
+
+	flOffset *= M_PI;
+	flOffset /= 180;
+
+	float xnew_diff = x_diff * cosf(flOffset) - y_diff * sinf(flOffset);
+	float ynew_diff = x_diff * sinf(flOffset) + y_diff * cosf(flOffset);
+
+	xnew_diff /= scale;
+	ynew_diff /= scale;
+
+	xnew_diff = (iRadarRadius / 2) + (int)xnew_diff;
+	ynew_diff = (iRadarRadius / 2) + (int)ynew_diff;
+
+	// clamp x & y
+	// FIXME: instead of using hardcoded "4" we should fix cliprect of the radar window
+	if (xnew_diff > iRadarRadius)
+		xnew_diff = iRadarRadius - 4;
+	else if (xnew_diff < 4)
+		xnew_diff = 4;
+
+	if (ynew_diff > iRadarRadius)
+		ynew_diff = iRadarRadius;
+	else if (ynew_diff < 4)
+		ynew_diff = 0;
+
+	return Vector2D(xnew_diff, ynew_diff);
+}
 
 void draw_utils::hackProc(void* ptr)
 {
-	KernelInterface* ring0 = static_cast<KernelInterface*>(ptr);
+	ImGui_ImplDX9_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
 
-	ring0->Read32(ring0->Modules->bClient + dwLocalPlayer, &pLocal);
-	if (!pLocal)
-		return;
 
-	ring0->Read32(pLocal + m_iTeamNum, &localTeam);
-	if (localTeam != 2 && localTeam != 3)
-		return;
-
-	ring0->Read32(pLocal + m_aimPunchAngle, &vecPunch);
-	crosshair(7,
-		D3DXVECTOR2(
-			static_cast<float>(m_iWidth) / 2.f - (static_cast<float>(m_iWidth) / 90 * vecPunch.y),
-			static_cast<float>(m_iHeight) / 2.f + (static_cast<float>(m_iHeight) / 90 * vecPunch.x)
-		),
-		D3DCOLOR_ARGB(255, 0, 255, 0));
-
-	for (DWORD32 i = 1; i < 64; i++)
+	ImGui::Begin("[DBG]", &window_opened, flags);
 	{
-		ring0->Read32(ring0->Modules->bClient + dwEntityList + (i - 1) * 0x10, &pEntity);
-		if (!pEntity)
-			continue;
+		ImGui::SetWindowSize(ImVec2(static_cast<float>(win_width), static_cast<float>(win_height)));
+		ImGui::SetWindowPos(ImVec2(static_cast<float>(win_pos_x), static_cast<float>(win_pos_y)));
 
-		ring0->Read32(pEntity + m_iHealth, &entHp);
-		if (!entHp)
-			continue;
+		ImDrawList* draw_list = ImGui::GetWindowDrawList();
+		ImVec2 winpos = ImGui::GetWindowPos();
+		ImVec2 winsize = ImGui::GetWindowSize();
 
-		ring0->Read32(pEntity + m_iTeamNum, &entTeam);
-		if (entTeam == localTeam)
-			continue;
+		//Draw Lines
+		draw_list->AddLine(ImVec2(winpos.x + winsize.x * 0.5f, winpos.y), ImVec2(winpos.x + winsize.x * 0.5f, winpos.y + winsize.y), ImColor(70, 70, 70, 255), 1.f);
+		draw_list->AddLine(ImVec2(winpos.x, winpos.y + winsize.y * 0.5f), ImVec2(winpos.x + winsize.x, winpos.y + winsize.y * 0.5f), ImColor(70, 70, 70, 255), 1.f);
 
+		draw_list->AddLine(ImVec2(winpos.x + winsize.x * 0.5f, winpos.y + winsize.y * 0.5f), ImVec2(winpos.x, winpos.y), ImColor(90, 90, 90, 255), 1.f);
+		draw_list->AddLine(ImVec2(winpos.x + winsize.x * 0.5f, winpos.y + winsize.y * 0.5f), ImVec2(winpos.x + winsize.x, winpos.y), ImColor(90, 90, 90, 255), 1.f);
 
-		ring0->Read32(pEntity + m_bDormant, &entDormant);
-		if (entDormant)
-			continue;
+		//Draw LP
+		draw_list->AddCircleFilled(ImVec2(winpos.x + winsize.x * 0.5f, winpos.y + winsize.y * 0.5f), static_cast<ImU32>(radar_point_size), ImColor(0, 0, 255, 255));
 
-		ring0->Read32(ring0->Modules->bClient + mViewMatrix, &viewMatrix);
-		ring0->Read32(pEntity + m_vecOrigin, &entPos);
-		if (!w2s(entPos, entScreen, viewMatrix))
-			continue;
+		float scale = static_cast<float>(radar_point_size);
+	
 
-		entHead = getBonePos(pEntity, 8, ring0);
-		if (entHead.x == 0 && entHead.y == 0 && entHead.z == 0.f)
-			continue;
+		Entity localPlayer(ptr, CLIENT_STATE);
+		if(!localPlayer.isValid() || !localPlayer.getHealth())
+			goto end_render;
 
-		if (!w2s(entHead, entHeadScreen, viewMatrix))
-			continue;
+		QAngle localplayer_angles = localPlayer.getViewAngles();
+		Vector localPos = localPlayer.getOrigin();
+		
+		for(DWORD32 i = 1; i <= 64; i++)
+		{
+			EntityShape_t shape;
 
-		FLOAT boxHeight = abs(entHeadScreen.y - entScreen.y);
-		FLOAT boxWidth = boxHeight / 2;
-		healthBox(entScreen.x - boxWidth / 2, entHeadScreen.y, boxWidth, boxHeight, 2.f, entHp, D3DCOLOR_ARGB(255, 255, 0, 0), D3DCOLOR_ARGB(255, 0, 255, 0));
-		string(D3DXVECTOR2(entScreen.x, entScreen.y), std::to_string(entHp), D3DCOLOR_ARGB(255, 255, 255, 0));
+			Entity ent(ptr, CLIENT_STATE, i);
+			if(!ent.isValid())
+				continue;
+
+			if(ent.isDormant() || !ent.getHealth())
+				continue;
+
+			if(ent.getTeam() == localPlayer.getTeam())
+				continue;
+
+			Vector playerPos = ent.getOrigin();
+			Vector2D screenpos = WorldToRadar(playerPos, localPos, localplayer_angles, static_cast<int>(winsize.x), static_cast<float>(radar_zoom));
+
+			if (playerPos.z + 64.0f < localPos.z)
+				shape = SHAPE_TRIANGLE_UPSIDEDOWN;
+			else if (playerPos.z - 64.0f > localPos.z)
+				shape = SHAPE_TRIANGLE;
+			else
+				shape = SHAPE_CIRCLE;
+			
+			switch (shape)
+			{
+			case SHAPE_CIRCLE:
+				draw_list->AddCircleFilled(ImVec2(winpos.x + screenpos.x, winpos.y + screenpos.y), scale, ImColor(255, 0, 0));
+				break;
+			case SHAPE_TRIANGLE:
+				draw_list->AddTriangleFilled(ImVec2(winpos.x + screenpos.x + scale, winpos.y + screenpos.y + scale),
+					ImVec2(winpos.x + screenpos.x - scale, winpos.y + screenpos.y + scale),
+					ImVec2(winpos.x + screenpos.x, winpos.y + screenpos.y - scale),
+					ImColor(255, 0, 0));
+				break;
+			case SHAPE_TRIANGLE_UPSIDEDOWN:
+				draw_list->AddTriangleFilled(ImVec2(winpos.x + screenpos.x - scale, winpos.y + screenpos.y - scale),
+					ImVec2(winpos.x + screenpos.x + scale, winpos.y + screenpos.y - scale),
+					ImVec2(winpos.x + screenpos.x, winpos.y + screenpos.y + scale),
+					ImColor(255, 0, 0));
+				break;
+			}
+		}
+		
 	}
+	end_render:
+	ImGui::End();
+	ImGui::EndFrame();
+
+	ImGui::Render();
+	ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+}
+
+
+BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+{
+	if (monitor_index == display_index)
+	{
+		DESKTOP_RECT = *lprcMonitor;
+		SCREEN_WIDTH = DESKTOP_RECT.right - DESKTOP_RECT.left;
+		SCREEN_HEIGHT = DESKTOP_RECT.bottom - DESKTOP_RECT.top;
+		return false;
+	}
+
+	monitor_index++;
+	
+	return true;
 }
 
 void StartRender(
@@ -160,7 +253,7 @@ void StartRender(
 	HINSTANCE hInstance
 )
 {
-	HWND desktop = LI_FN(GetDesktopWindow)();
+	/*HWND desktop = LI_FN(GetDesktopWindow)();
 	if (desktop != nullptr)
 	{
 		LI_FN(GetWindowRect)(desktop, &DESKTOP_RECT);
@@ -171,8 +264,10 @@ void StartRender(
 	{
 		LI_FN(MessageBoxA)(nullptr, ENCRYPT_STR_A("Can't find desktop!"), ENCRYPT_STR_A("ERROR"), MB_OK);
 		LI_FN(ExitProcess)(0);
-	}
+	}*/
 
+	
+	EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, NULL);
 	WNDCLASSA wc;
 	ZeroMemory(&wc, sizeof(WNDCLASSA));
 
@@ -193,10 +288,19 @@ void StartRender(
 	LI_FN(ShowWindow)(OVERLAY_WINDOW, SW_SHOWDEFAULT);
 	LI_FN(UpdateWindow)(OVERLAY_WINDOW);
 
-	MSG msg;
+	MSG msg = {};
 	draw_utils::init_utils(OVERLAY_WINDOW, DESKTOP_RECT);
 
-	while (TRUE)
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui::StyleColorsLight();
+
+	ImGui_ImplWin32_Init(OVERLAY_WINDOW);
+	ImGui_ImplDX9_Init(draw_utils::m_dxDevice);
+
+	ring0->Read32(ring0->Modules->bEngine + dwClientState, &CLIENT_STATE);
+	
+	while (msg.message != WM_QUIT)
 	{
 		if (LI_FN(PeekMessageA).cached()(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
@@ -209,4 +313,8 @@ void StartRender(
 
 		draw_utils::render(static_cast<void*>(ring0));
 	}
+
+	ImGui_ImplDX9_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 }

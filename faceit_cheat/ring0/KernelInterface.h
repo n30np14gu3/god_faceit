@@ -5,6 +5,7 @@
 struct CSGoModules
 {
 	DWORD32 bClient;
+	DWORD32 bEngine;
 };
 
 class KernelInterface

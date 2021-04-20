@@ -59,7 +59,7 @@ bool KernelInterface::GetModules()
 		return false;
 
 
-	KERNEL_GET_CLIENT_DLL req{ 0, -1 };
+	KERNEL_GET_CLIENT_DLL req{ 0, 0, -1 };
 	BOOL result = LI_FN(DeviceIoControl).cached()(m_hDriver, IO_GET_CLIENT_DLL, &req, sizeof(req), &req, sizeof(req), nullptr, nullptr);
 	if (!result)
 		return false;
@@ -68,6 +68,7 @@ bool KernelInterface::GetModules()
 		return false;
 
 	Modules->bClient = req.bClient;
+	Modules->bEngine = req.bEngine;
 	return true;
 }
 

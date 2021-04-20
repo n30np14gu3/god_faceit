@@ -10,6 +10,13 @@ void ImageLoadCallback(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIMAGE_I
 	{
 		CLIENT_DLL_BASE = (DWORD32)(DWORD64)ImageInfo->ImageBase;
 		DPRINT("Loading client.dll 0x%X", CLIENT_DLL_BASE);
+		return;
+	}
+
+	if (wcsstr(FullImageName->Buffer, ENGINE_DLL))
+	{
+		ENGINE_DLL_BASE = (DWORD32)(DWORD64)ImageInfo->ImageBase;
+		DPRINT("Loading engine.dll 0x%X", ENGINE_DLL_BASE);
 	}
 	VM_END;
 }

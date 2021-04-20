@@ -5,4 +5,3 @@ void StartRender(
 	KernelInterface* ring0,
 	HINSTANCE hInstance
 );
-
